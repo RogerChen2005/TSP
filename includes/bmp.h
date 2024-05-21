@@ -5,22 +5,22 @@
 
 #pragma pack(push, 1)
 struct BMPHeader {
-    uint16_t signature;
-    uint32_t fileSize;
-    uint16_t reserved1;
-    uint16_t reserved2;
-    uint32_t pixelDataOffset;
-    uint32_t dibHeaderSize;
-    uint32_t width;
-    uint32_t height;
-    uint16_t colorPlanes;
-    uint16_t bitsPerPixel;
-    uint32_t compressionMethod;
-    uint32_t imageSize;
-    uint32_t horizontalResolution;
-    uint32_t verticalResolution;
-    uint32_t colorsInPalette;
-    uint32_t importantColors;
+    uint16 signature;
+    uint32 fileSize;
+    uint16 reserved1;
+    uint16 reserved2;
+    uint32 pixelDataOffset;
+    uint32 dibHeaderSize;
+    uint32 width;
+    uint32 height;
+    uint16 colorPlanes;
+    uint16 bitsPerPixel;
+    uint32 compressionMethod;
+    uint32 imageSize;
+    uint32 horizontalResolution;
+    uint32 verticalResolution;
+    uint32 colorsInPalette;
+    uint32 importantColors;
 };
 #pragma pack(pop)
 
@@ -36,10 +36,13 @@ private:
     int width,height;
 public:
     bmp(char ** data,int width,int height);
+    bmp(int width,int height);
     ~bmp();
     void exports(const char * filename);
     void draw(std::vector<pos>& path,double h);
-    void draw(pos* path,int length);
+    void circle(point& _p,double radius);
+    void lineTo(point& _p1,point& _p2,double width,rgb& color);
+    void dot(point& _p,double radius);
     int clac_pos(int x,int y);
 };
 

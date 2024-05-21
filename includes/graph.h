@@ -1,24 +1,8 @@
 #pragma once 
 #include <vector>
 #include <queue>
-
-struct edge
-{
-    int u,v;
-    double w;
-};
-bool operator < (const edge& x,const edge& y);
-
-struct point{
-    double x,y,w;
-};
-
-struct point_relations{
-    int x=0,y=0;
-    double w=0;
-    std::vector<int> points;
-};
-
+#include <pos.h>
+#include <bmp.h>
 
 class graph
 {
@@ -33,6 +17,7 @@ private:
     std::vector<int> fa;
     std::vector<int> header;
     std::vector<std::vector<int>> path;
+    point _drone;
     void add_edge(int u,int v,double w);
     int findfa(int x);
     bool check(int a,int b);
@@ -40,6 +25,7 @@ private:
     void createBestMatch();
     void createEularRoute();
     void createHamiltonian();
+    void calculateRoute();
     void calculateTarget();
     double calculateTotalW(std::vector<int>& _points);
     double calculateEdgeW(point& p1,point& p2);
@@ -48,8 +34,11 @@ public:
     void randomPoint(int count);
     void addPoint(const point &p);
     void addPoint(double x,double y,double w);
+    void setDronePosition(double x,double y);
     void createMap();
     void printRoute();
+    void outputRoute(const char* filename);
+    void output(const char* filename);
 };
 
 

@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <limits>
 #include <iostream>
+#include <fstream>
 #include <stack>
 
 double distance(const point& p1,const point& p2){
@@ -12,16 +13,13 @@ double distance(const point& p1,const point& p2){
     return std::sqrt(dx*dx+dy*dy);
 }
 
-bool operator < (const edge& x,const edge& y){
-    return x.w < y.w;
-}
-
 graph::graph(int width,int height,int drone_count,double scan_radius){
     this->width = width;
     this->height = height;
     this->drone_count = drone_count;
     this->scan_radius = scan_radius;
     this->flag = 0;
+    this->_drone = {0.0,0.0,0.0};
 }
 
 void graph::addPoint(const point& p){
@@ -51,6 +49,10 @@ void graph::randomPoint(int count){
     return;
 }
 
+void graph::setDronePosition(double x,double y){
+    this->_drone = {x,y};
+}
+
 void graph::add_edge(int u,int v,double w){
     edge _edge;
     _edge.u = u;
@@ -67,7 +69,7 @@ double graph::calculateTotalW(std::vector<int>& _points){
 
 double graph::calculateEdgeW(point& p1,point& p2){
     double dist = distance(p1,p2);
-    return dist - 1.0 * (p1.w + p2.w);
+    return dist - 7.5 * (p1.w + p2.w);
 }
 
 void graph::createMap(){
@@ -88,6 +90,7 @@ void graph::createMap(){
     this->createBestMatch();
     this->createEularRoute();
     this->createHamiltonian();
+    this->calculateRoute();
 }
 
 void graph::calculateTarget(){
@@ -274,6 +277,30 @@ void graph::createHamiltonian(){
     }
 }
 
+void reverse(std::vector<int>& arr,int start,int end){
+    for(;start < end;start++,end--){
+        std::swap(arr[start],arr[end]);
+    }
+}
+
+void graph::calculateRoute(){
+    for(auto& route:this->path){
+        int route_size = route.size();
+        double minw = std::numeric_limits<double>::infinity();
+        double min_i = 0;
+        for(int i = 0;i < route_size;i++){
+            double w = this->calculateEdgeW(this->_drone,this->targets[route[i]]);
+            if(w < minw){
+                minw = w;
+                min_i = i;
+            }
+        }
+        reverse(route,0,min_i-1);
+        reverse(route,min_i,route_size-1);
+        reverse(route,0,route_size-1);
+    }
+}
+
 void graph::printRoute(){
     for(int i = 0;i<drone_count;i++){
         std::cout << "Route " << i+1 << ":\n";
@@ -281,5 +308,46 @@ void graph::printRoute(){
             std::cout << x << "->";
         }
         std::cout << "End" << std::endl;
+    }
+}
+
+void graph::output(const char* filename){
+    bmp _bmp(this->width, this->height);
+    for(auto & point:this->points){
+        _bmp.dot(point,point.w * 3);
+        _bmp.circle(point,this->scan_radius);
+    }
+    for(int j = 0;j < this->drone_count;j++){
+        const auto & route = this->path[j];
+        int route_size = route.size();
+        double h = (double)j / drone_count;
+        for(int i = 1;i < route_size;i++){
+            rgb color = {255,(unsigned char)(h*255),(unsigned char)(1-h)*255};
+            _bmp.lineTo(this->targets[route[i-1]],this->targets[route[i]],1.0,color);
+        }
+    }
+    _bmp.exports(filename);
+}
+
+void graph::outputRoute(const char* filename){
+    std::ofstream file(filename, std::ios::out);
+    file << this->width << " " << this->height << std::endl;
+    file << this->_drone.x << " " << this->_drone.y << std::endl;
+    file << this->scan_radius << std::endl;
+    file << this->points.size() << std::endl;
+    for(auto & point:this->points){
+        file << point.x << " ";
+        file << point.y << " ";
+        file << point.w << std::endl;
+    }
+    file << this->drone_count << std::endl;
+    for(int j = 0;j < this->drone_count;j++){
+        const auto & route = this->path[j];
+        int route_size = route.size();
+        file << route_size << std::endl;
+        for(int i = 0;i < route_size;i++){
+            file << this->targets[route[i]].x << " ";
+            file << this->targets[route[i]].y << std::endl;
+        }
     }
 }
