@@ -1,0 +1,8 @@
+cmake_minimum_required(VERSION 3.20)
+project(UAV LANGUAGES CXX)
+set(CMAKE_CXX_STANDARD 20)
+set(EXECUTABLE_OUTPUT_PATH ${CMAKE_SOURCE_DIR}/bin)
+set(CMAKE_BUILD_TYPE Debug)
+include_directories(includes/)
+file(GLOB SRC src/*.cpp)
+add_executable(main ${SRC} main.cpp)
