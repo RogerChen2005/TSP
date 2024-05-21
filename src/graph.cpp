@@ -4,7 +4,6 @@
 #include <algorithm>
 #include <limits>
 #include <iostream>
-#include <fstream>
 #include <stack>
 
 double distance(const point& p1,const point& p2){
@@ -357,12 +356,13 @@ void graph::outputRoute(const char* filename){
             file << this->targets[route[i]].y << std::endl;
         }
     }
+    file.close();
 }
 void graph::printRouteScore(){
-    int i = 0;
+    int j = 0;
     double all_w = 0.0,all_route = 0.0;
     for(auto& route:this->path){
-        i++;
+        j++;
         int route_size = route.size();
         double total_w = this->targets[route[0]].w;
         double total_route = 0.0;
@@ -372,7 +372,20 @@ void graph::printRouteScore(){
         }
         all_w+=total_w;
         all_route+= total_route;
-        std::cout << "Route "<<i<< ": "<< total_w / total_route *100 << std::endl;
+        std::cout << "Route "<<j<< ": "<< total_w / total_route *100 << std::endl;
     }
     std::cout << "All route: "<< all_w / all_route *100 << std::endl;
+}
+
+void graph::outputRouteScore(std::ofstream & file){
+    for(auto& route:this->path){
+        int route_size = route.size();
+        double total_w = this->targets[route[0]].w;
+        double total_route = distance(this->_drone,this->targets[route[0]]);
+        for(int i = 1;i < route_size;i++){
+            total_w+=this->targets[route[i]].w;
+            total_route += distance(this->targets[route[i]],this->targets[route[i-1]]);
+        }
+        file << total_w << " " << total_route << std::endl;
+    }
 }

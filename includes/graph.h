@@ -3,6 +3,7 @@
 #include <queue>
 #include <pos.h>
 #include <bmp.h>
+#include <fstream>
 
 class graph
 {
@@ -42,6 +43,7 @@ public:
     void outputRoute(const char* filename);
     void output(const char* filename);
     void printRouteScore();
+    void outputRouteScore(std::ofstream & file);
 };
 
 
