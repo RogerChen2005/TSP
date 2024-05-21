@@ -9,5 +9,5 @@ point& point::operator=(const point &_p){
 }
 
 bool operator < (const edge& x,const edge& y){
-    return x.w < y.w;
+    return x.w > y.w;
 }

@@ -19,7 +19,10 @@ graph::graph(int width,int height,int drone_count,double scan_radius){
     this->drone_count = drone_count;
     this->scan_radius = scan_radius;
     this->flag = 0;
+    this->tw = 0.0;
     this->_drone = {0.0,0.0,0.0};
+    this->node_weight = 5;
+    this->increase_rate = 0.7;
 }
 
 void graph::addPoint(const point& p){
@@ -67,26 +70,25 @@ double graph::calculateTotalW(std::vector<int>& _points){
     return w;
 }
 
-double graph::calculateEdgeW(point& p1,point& p2){
+double graph::calculateEdgeCost(point& p1,point& p2){
     double dist = distance(p1,p2);
-    return dist - 7.5 * (p1.w + p2.w);
+    return dist * std::exp(-(p1.w + p2.w)/this->node_weight);
 }
+
 
 void graph::createMap(){
     this->calculateTarget();
     int count = this->targets.size();
-    double tw = 0.0;
     for(int i = 0;i < count;i++){
         for(int j = i+1;j < count ;j++){
             if(i!=j){
-                double w = this->calculateEdgeW(this->targets[i],this->targets[j]);
-                tw+=w;
+                double w = this->calculateEdgeCost(this->targets[i],this->targets[j]);
                 this->add_edge(i,j,w);
             }
         }
     }
     this->connect.resize(count);
-    this->createForest(tw*this->targets.size()/this->egdes.size()/this->drone_count*1.4);
+    this->createForest();
     this->createBestMatch();
     this->createEularRoute();
     this->createHamiltonian();
@@ -97,15 +99,17 @@ void graph::calculateTarget(){
     int points_size = this->points.size();
     this->points_to_targets.resize(points_size);
     std::vector<point_relations> map(this->height * this->width);
+    this->point_w.resize(points_size);
     for(int i = 0;i < points_size;i++){
+        this->point_w[i] = this->points[i].w;
         int mx = this->points[i].x,my = this->points[i].y;
-        int left = std::floor(mx - this->scan_radius);
-        int right = std::ceil(mx + this->scan_radius);
+        int left = std::ceil(mx - this->scan_radius);
+        int right = std::floor(mx + this->scan_radius);
         for (int x = left; x <= right; x++){
             int dx = x - mx;
             double c = std::sqrt(this->scan_radius * this->scan_radius - dx * dx);
-            int bottom = std::floor(my - c);
-            int top = std::ceil(my + c);
+            int bottom = std::ceil(my - c);
+            int top = std::floor(my + c);
             for (int y = bottom; y <= top; y++)
             {
                 if (x > 0 && x < this->width && y > 0 && y < this->height)
@@ -162,10 +166,11 @@ bool graph::check(int a,int b){
 	return false;
 }
 
-void graph::createForest(double p){
+void graph::createForest(){
+    const double C = (double)this->drone_count*this->increase_rate;
     int length = this->targets.size();
     std::vector<double> w(length);
-    // for(int i = 0;i<length;i++) w[i] = this->targets[i].w;
+    double current_cost = 0.0;
     int cnt = 0;
     this->fa.resize(length);
 	for(int i = 0;i < length;i++){
@@ -178,11 +183,11 @@ void graph::createForest(double p){
 			break;
 		}
 		else{
-            int y = w[findfa(_edge.v)];
-			if(check(_edge.u,_edge.v) == false && w[findfa(_edge.u)] < p && w[findfa(_edge.v)] < p){
+			if(check(_edge.u,_edge.v) == false && w[findfa(_edge.u)] + w[findfa(_edge.v)] <= current_cost/C){
 				cnt++;
                 w[findfa(_edge.u)] += _edge.w + w[findfa(_edge.v)];
 				fa[findfa(_edge.v)] = _edge.u;
+                current_cost += _edge.w;
                 this->connect[_edge.u].push_back(_edge.v);
                 this->connect[_edge.v].push_back(_edge.u);
 			}
@@ -192,7 +197,7 @@ void graph::createForest(double p){
 		if(fa[i] == i) this->header.push_back(i);
 	}
     if(this->header.size()!=this->drone_count){
-        std::cerr << "Error Calculating header"<<std::endl;
+        std::cerr << "Error Calculating header, header size: " << this->header.size() <<std::endl;
         exit(-1);
     }
 }
@@ -214,7 +219,7 @@ void graph::createBestMatch(){
         if(!vis[i]) {
             for(int j = i+1;j < single_size;j++){
                 if(!vis[j] && findfa(i) == findfa(j)) {
-                    int w = this->calculateEdgeW(this->targets[i],this->targets[j]);
+                    int w = this->calculateEdgeCost(this->targets[i],this->targets[j]);
                     if(w < min_w){
                         min_w = w;
                         min_index = j;
@@ -289,7 +294,7 @@ void graph::calculateRoute(){
         double minw = std::numeric_limits<double>::infinity();
         double min_i = 0;
         for(int i = 0;i < route_size;i++){
-            double w = this->calculateEdgeW(this->_drone,this->targets[route[i]]);
+            double w = this->calculateEdgeCost(this->_drone,this->targets[route[i]]);
             if(w < minw){
                 minw = w;
                 min_i = i;
@@ -334,11 +339,13 @@ void graph::outputRoute(const char* filename){
     file << this->width << " " << this->height << std::endl;
     file << this->_drone.x << " " << this->_drone.y << std::endl;
     file << this->scan_radius << std::endl;
-    file << this->points.size() << std::endl;
-    for(auto & point:this->points){
+    int point_size = this->points.size();
+    file << point_size << std::endl;
+    for(int i = 0;i < point_size;i++){
+        auto & point =  this->points[i];
         file << point.x << " ";
         file << point.y << " ";
-        file << point.w << std::endl;
+        file << this->point_w[i] << std::endl;
     }
     file << this->drone_count << std::endl;
     for(int j = 0;j < this->drone_count;j++){
@@ -350,4 +357,22 @@ void graph::outputRoute(const char* filename){
             file << this->targets[route[i]].y << std::endl;
         }
     }
+}
+void graph::printRouteScore(){
+    int i = 0;
+    double all_w = 0.0,all_route = 0.0;
+    for(auto& route:this->path){
+        i++;
+        int route_size = route.size();
+        double total_w = this->targets[route[0]].w;
+        double total_route = 0.0;
+        for(int i = 1;i < route_size;i++){
+            total_w+=this->targets[route[i]].w;
+            total_route += distance(this->targets[route[i]],this->targets[route[i-1]]);
+        }
+        all_w+=total_w;
+        all_route+= total_route;
+        std::cout << "Route "<<i<< ": "<< total_w / total_route *100 << std::endl;
+    }
+    std::cout << "All route: "<< all_w / all_route *100 << std::endl;
 }
