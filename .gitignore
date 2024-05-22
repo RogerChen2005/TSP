@@ -9,6 +9,8 @@ bin/
 *.bmp
 build/
 output/
+*.gz
+*.zip
 
 .vs/
 ALL_BUILD.vcxproj
